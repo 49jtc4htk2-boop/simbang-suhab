@@ -2,16 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>삼일 당일 최종 대면보고 자동완성</title>
+<title>삼일 당일 최종 대면보고 자동 생성</title>
 <style>
- body {
-   font-family: Arial, sans-serif;
-   padding: 20px;
- }
- textarea {
-   width: 100%;
-   height: 220px;
- }
+ body { font-family: Arial, sans-serif; padding: 20px; }
+ textarea { width: 100%; height: 260px; }
  button {
    padding: 8px 14px;
    margin: 6px 4px 6px 0;
@@ -20,22 +14,21 @@
  pre {
    background: #f9f9f9;
    border: 1px solid #ccc;
-   padding: 12px;
-   min-height: 160px;
+   padding: 14px;
+   min-height: 240px;
    white-space: pre-wrap;
  }
 </style>
 </head>
 <body>
 
-<h2>⚡️ 삼일 당일 최종 대면보고 자동 계산</h2>
+<h2>⚡️ 삼일 당일 최종 대면보고 자동 완성</h2>
 
-<textarea id="input" placeholder="보고 원문 전체를 그대로 붙여넣으세요"></textarea>
-<br>
+<textarea id="input" placeholder="보고 원문 전체를 그대로 붙여넣으세요"></textarea><br>
 <button onclick="process()">결과 보기</button>
 <button onclick="copyResult()">복사하기</button>
 
-<h3>✅ 결과</h3>
+<h3>✅ 최종 결과</h3>
 <pre id="output"></pre>
 
 <script>
@@ -43,37 +36,66 @@ function process() {
   const text = document.getElementById("input").value;
   const lines = text.split("\n");
 
-  let result = [];
+  let bodyLines = [];
+  let resultLines = [];
+
   let totalPeople = 0;
-  let totalSum = 0;
+  let totalFace = 0;
+  let timeTotals = Array(7).fill(0);
+
+  let inTable = false;
 
   lines.forEach(line => {
-    if (!line.match(/^\d+\//)) return;
+    if (line.includes("▪️구역/재적")) {
+      inTable = true;
+      bodyLines.push(line);
+      return;
+    }
 
-    const nums = line.match(/\d+/g);
-    if (!nums || nums.length < 9) return;
+    if (inTable && (line.match(/^\\d+\\//) || line.startsWith("총무부"))) {
+      const nums = line.match(/\d+/g);
+      if (!nums || nums.length < 9) return;
 
-    const area = nums[0];
-    const people = Number(nums[1]);
-    const counts = nums.slice(2, 9).map(Number);
+      const label = line.startsWith("총무부") ? "총무부" : nums[0];
+      const people = Number(nums[1]);
+      const counts = nums.slice(2, 9).map(Number);
 
-    const sum = counts.reduce((a, b) => a + b, 0);
-    const rate = people ? ((sum / people) * 100).toFixed(1) : "0.0";
+      const sum = counts.reduce((a, b) => a + b, 0);
+      const rate = people ? ((sum / people) * 100).toFixed(1) : "0.0";
 
-    totalPeople += people;
-    totalSum += sum;
+      totalPeople += people;
+      totalFace += sum;
+      counts.forEach((v, i) => timeTotals[i] += v);
 
-    result.push(
-      `${area}/${people}/${counts.join("/")}//${sum}(${rate}%)`
-    );
+      resultLines.push(
+        `${label}/${people}/${counts.join("/")}//${sum}(${rate}%)`
+      );
+      return;
+    }
+
+    if (line.startsWith("📋")) inTable = false;
+
+    bodyLines.push(line);
   });
 
   const totalRate =
-    totalPeople ? ((totalSum / totalPeople) * 100).toFixed(1) : "0.0";
+    totalPeople ? ((totalFace / totalPeople) * 100).toFixed(1) : "0.0";
 
-  result.push(`종합/${totalPeople}//${totalSum}(${totalRate}%)`);
+  resultLines.push(
+    `종합/${totalPeople}/${timeTotals.join("/")}//${totalFace}(${totalRate}%)`
+  );
 
-  document.getElementById("output").innerText = result.join("\n");
+  const finalText = [
+    bodyLines[0],
+    bodyLines[1],
+    "",
+    bodyLines.find(l => l.includes("▪️구역/재적")),
+    ...resultLines,
+    "",
+    ...bodyLines.slice(bodyLines.findIndex(l => l.startsWith("📋")))
+  ].join("\n");
+
+  document.getElementById("output").innerText = finalText;
 }
 
 function copyResult() {
@@ -83,7 +105,7 @@ function copyResult() {
     return;
   }
   navigator.clipboard.writeText(text).then(() => {
-    alert("✅ 결과가 복사되었습니다!");
+    alert("✅ 전체 메시지가 복사되었습니다!");
   });
 }
 </script>
