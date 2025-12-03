@@ -2,42 +2,56 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>삼일 당일 대면율 자동 계산기</title>
+<title>삼일 당일 최종 대면보고 자동완성</title>
 <style>
- body { font-family: Arial, sans-serif; padding: 20px; }
- textarea { width: 100%; height: 220px; }
- button { padding: 8px 16px; margin: 10px 0; }
- table { border-collapse: collapse; width: 100%; margin-top: 20px; }
- th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
- th { background: #f2f2f2; }
- .bold { font-weight: bold; background: #fafafa; }
+ body {
+   font-family: Arial, sans-serif;
+   padding: 20px;
+ }
+ textarea {
+   width: 100%;
+   height: 220px;
+ }
+ button {
+   padding: 8px 14px;
+   margin: 6px 4px 6px 0;
+   cursor: pointer;
+ }
+ pre {
+   background: #f9f9f9;
+   border: 1px solid #ccc;
+   padding: 12px;
+   min-height: 160px;
+   white-space: pre-wrap;
+ }
 </style>
 </head>
 <body>
 
-<h2>⚡️ 삼일 당일 대면율 자동 계산</h2>
+<h2>⚡️ 삼일 당일 최종 대면보고 자동 계산</h2>
 
-<textarea id="input" placeholder="여기에 보고 텍스트 전체를 붙여넣으세요"></textarea>
+<textarea id="input" placeholder="보고 원문 전체를 그대로 붙여넣으세요"></textarea>
 <br>
-<button onclick="process()">자동 계산</button>
+<button onclick="process()">결과 보기</button>
+<button onclick="copyResult()">복사하기</button>
 
-<div id="output"></div>
+<h3>✅ 결과</h3>
+<pre id="output"></pre>
 
 <script>
 function process() {
   const text = document.getElementById("input").value;
   const lines = text.split("\n");
 
-  let rows = [];
-  let totalAtt = 0;
-  let totalFace = 0;
+  let result = [];
+  let totalPeople = 0;
+  let totalSum = 0;
 
   lines.forEach(line => {
-    if (!line.includes("/")) return;
+    if (!line.match(/^\d+\//)) return;
 
-    // 숫자만 추출
     const nums = line.match(/\d+/g);
-    if (!nums || nums.length < 3) return;
+    if (!nums || nums.length < 9) return;
 
     const area = nums[0];
     const people = Number(nums[1]);
@@ -46,46 +60,31 @@ function process() {
     const sum = counts.reduce((a, b) => a + b, 0);
     const rate = people ? ((sum / people) * 100).toFixed(1) : "0.0";
 
-    totalAtt += people;
-    totalFace += sum;
+    totalPeople += people;
+    totalSum += sum;
 
-    rows.push({ area, people, sum, rate });
+    result.push(
+      `${area}/${people}/${counts.join("/")}//${sum}(${rate}%)`
+    );
   });
 
-  let html = `
-  <table>
-    <tr>
-      <th>구역</th>
-      <th>재적</th>
-      <th>종합(대면)</th>
-      <th>대면율</th>
-    </tr>
-  `;
+  const totalRate =
+    totalPeople ? ((totalSum / totalPeople) * 100).toFixed(1) : "0.0";
 
-  rows.forEach(r => {
-    html += `
-      <tr>
-        <td>${r.area}</td>
-        <td>${r.people}</td>
-        <td>${r.sum}</td>
-        <td>${r.rate}%</td>
-      </tr>
-    `;
+  result.push(`종합/${totalPeople}//${totalSum}(${totalRate}%)`);
+
+  document.getElementById("output").innerText = result.join("\n");
+}
+
+function copyResult() {
+  const text = document.getElementById("output").innerText;
+  if (!text) {
+    alert("복사할 결과가 없습니다.");
+    return;
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    alert("✅ 결과가 복사되었습니다!");
   });
-
-  const totalRate = totalAtt ? ((totalFace / totalAtt) * 100).toFixed(1) : "0.0";
-
-  html += `
-    <tr class="bold">
-      <td>종합</td>
-      <td>${totalAtt}</td>
-      <td>${totalFace}</td>
-      <td>${totalRate}%</td>
-    </tr>
-  </table>
-  `;
-
-  document.getElementById("output").innerHTML = html;
 }
 </script>
 
