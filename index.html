@@ -1,86 +1,91 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>대면율 계산기</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      max-width: 600px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background-color: #f4f4f4;
-    }
-    input {
-      width: 90%;
-      padding: 4px;
-    }
-    .result {
-      font-weight: bold;
-      color: #0066cc;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>삼일 당일 대면율 자동 계산기</title>
+<style>
+ body { font-family: Arial, sans-serif; padding: 20px; }
+ textarea { width: 100%; height: 220px; }
+ button { padding: 8px 16px; margin: 10px 0; }
+ table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+ th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+ th { background: #f2f2f2; }
+ .bold { font-weight: bold; background: #fafafa; }
+</style>
 </head>
 <body>
 
-<h2>대면율 자동 계산</h2>
+<h2>⚡️ 삼일 당일 대면율 자동 계산</h2>
 
-<table>
-  <tr>
-    <th>구역</th>
-    <th>재적</th>
-    <th>12시</th>
-    <th>4시(대체)</th>
-    <th>7시30분</th>
-    <th>9시30분</th>
-    <th>그외성전</th>
-    <th>당일외부</th>
-    <th>목요일외부</th>
-    <th>종합(대면율)</th>
-  </tr>
-  <tr>
-    <td><input type="text" placeholder="구역"></td>
-    <td><input type="number" id="total"></td>
-    <td><input type="number" class="count"></td>
-    <td><input type="number" class="count"></td>
-    <td><input type="number" class="count"></td>
-    <td><input type="number" class="count"></td>
-    <td><input type="number" class="count"></td>
-    <td><input type="number" class="count"></td>
-    <td><input type="number" class="count"></td>
-    <td class="result" id="rate">0%</td>
-  </tr>
-</table>
-
+<textarea id="input" placeholder="여기에 보고 텍스트 전체를 붙여넣으세요"></textarea>
 <br>
-<button onclick="calculate()">계산하기</button>
+<button onclick="process()">자동 계산</button>
+
+<div id="output"></div>
 
 <script>
-function calculate() {
-  const total = Number(document.getElementById("total").value);
-  const counts = document.querySelectorAll(".count");
-  
-  let sum = 0;
-  counts.forEach(input => {
-    sum += Number(input.value || 0);
+function process() {
+  const text = document.getElementById("input").value;
+  const lines = text.split("\n");
+
+  let rows = [];
+  let totalAtt = 0;
+  let totalFace = 0;
+
+  lines.forEach(line => {
+    if (!line.includes("/")) return;
+
+    // 숫자만 추출
+    const nums = line.match(/\d+/g);
+    if (!nums || nums.length < 3) return;
+
+    const area = nums[0];
+    const people = Number(nums[1]);
+    const counts = nums.slice(2, 9).map(Number);
+
+    const sum = counts.reduce((a, b) => a + b, 0);
+    const rate = people ? ((sum / people) * 100).toFixed(1) : "0.0";
+
+    totalAtt += people;
+    totalFace += sum;
+
+    rows.push({ area, people, sum, rate });
   });
 
-  if (total > 0) {
-    const rate = (sum / total) * 100;
-    document.getElementById("rate").innerText = rate.toFixed(1) + "%";
-  } else {
-    document.getElementById("rate").innerText = "0%";
-  }
+  let html = `
+  <table>
+    <tr>
+      <th>구역</th>
+      <th>재적</th>
+      <th>종합(대면)</th>
+      <th>대면율</th>
+    </tr>
+  `;
+
+  rows.forEach(r => {
+    html += `
+      <tr>
+        <td>${r.area}</td>
+        <td>${r.people}</td>
+        <td>${r.sum}</td>
+        <td>${r.rate}%</td>
+      </tr>
+    `;
+  });
+
+  const totalRate = totalAtt ? ((totalFace / totalAtt) * 100).toFixed(1) : "0.0";
+
+  html += `
+    <tr class="bold">
+      <td>종합</td>
+      <td>${totalAtt}</td>
+      <td>${totalFace}</td>
+      <td>${totalRate}%</td>
+    </tr>
+  </table>
+  `;
+
+  document.getElementById("output").innerHTML = html;
 }
 </script>
 
