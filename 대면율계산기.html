@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>대면율 계산기</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 600px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+    input {
+      width: 90%;
+      padding: 4px;
+    }
+    .result {
+      font-weight: bold;
+      color: #0066cc;
+    }
+  </style>
+</head>
+<body>
+
+<h2>대면율 자동 계산</h2>
+
+<table>
+  <tr>
+    <th>구역</th>
+    <th>재적</th>
+    <th>12시</th>
+    <th>4시(대체)</th>
+    <th>7시30분</th>
+    <th>9시30분</th>
+    <th>그외성전</th>
+    <th>당일외부</th>
+    <th>목요일외부</th>
+    <th>종합(대면율)</th>
+  </tr>
+  <tr>
+    <td><input type="text" placeholder="구역"></td>
+    <td><input type="number" id="total"></td>
+    <td><input type="number" class="count"></td>
+    <td><input type="number" class="count"></td>
+    <td><input type="number" class="count"></td>
+    <td><input type="number" class="count"></td>
+    <td><input type="number" class="count"></td>
+    <td><input type="number" class="count"></td>
+    <td><input type="number" class="count"></td>
+    <td class="result" id="rate">0%</td>
+  </tr>
+</table>
+
+<br>
+<button onclick="calculate()">계산하기</button>
+
+<script>
+function calculate() {
+  const total = Number(document.getElementById("total").value);
+  const counts = document.querySelectorAll(".count");
+  
+  let sum = 0;
+  counts.forEach(input => {
+    sum += Number(input.value || 0);
+  });
+
+  if (total > 0) {
+    const rate = (sum / total) * 100;
+    document.getElementById("rate").innerText = rate.toFixed(1) + "%";
+  } else {
+    document.getElementById("rate").innerText = "0%";
+  }
+}
+</script>
+
+</body>
+</html>
