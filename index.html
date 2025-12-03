@@ -1,111 +1,137 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>삼일 당일 최종 대면보고 자동 생성</title>
-<style>
- body { font-family: Arial, sans-serif; padding: 20px; }
- textarea { width: 100%; height: 260px; }
- button {
-   padding: 8px 14px;
-   margin: 6px 4px 6px 0;
-   cursor: pointer;
- }
- pre {
-   background: #f9f9f9;
-   border: 1px solid #ccc;
-   padding: 14px;
-   min-height: 240px;
-   white-space: pre-wrap;
- }
-</style>
+  <meta charset="UTF-8" />
+  <title>대면율 자동 계산기</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 20px;
+      background: #f7f7f7;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    textarea {
+      width: 100%;
+      height: 260px;
+      font-size: 14px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    pre {
+      background: #fff;
+      padding: 12px;
+      white-space: pre-wrap;
+      margin-top: 15px;
+      border: 1px solid #ddd;
+    }
+  </style>
 </head>
 <body>
 
-<h2>⚡️ 삼일 당일 최종 대면보고 자동 완성</h2>
+<h1>📊 대면 보고 자동 계산기</h1>
 
-<textarea id="input" placeholder="보고 원문 전체를 그대로 붙여넣으세요"></textarea><br>
-<button onclick="process()">결과 보기</button>
+<textarea id="input" placeholder="여기에 원문 그대로 붙여넣으세요"></textarea>
+
+<br />
+<button onclick="processText()">결과 보기</button>
 <button onclick="copyResult()">복사하기</button>
 
-<h3>✅ 최종 결과</h3>
 <pre id="output"></pre>
 
 <script>
-function process() {
-  const text = document.getElementById("input").value;
-  const lines = text.split("\n");
+function extractNumber(text) {
+  const match = text.match(/^(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
 
-  let bodyLines = [];
-  let resultLines = [];
+function processText() {
+  const input = document.getElementById("input").value;
+  const lines = input.split("\n");
 
-  let totalPeople = 0;
-  let totalFace = 0;
-  let timeTotals = Array(7).fill(0);
+  let result = [];
+  let header = [];
+  let totals = [];
+  let totalAttendance = 0;
+  let totalRegistered = 0;
 
-  let inTable = false;
-
-  lines.forEach(line => {
-    if (line.includes("▪️구역/재적")) {
-      inTable = true;
-      bodyLines.push(line);
-      return;
+  for (let line of lines) {
+    if (line.includes("▪️")) {
+      header = line;
+      result.push(line);
+      continue;
     }
 
-    if (inTable && (line.match(/^\\d+\\//) || line.startsWith("총무부"))) {
-      const nums = line.match(/\d+/g);
-      if (!nums || nums.length < 9) return;
-
-      const label = line.startsWith("총무부") ? "총무부" : nums[0];
-      const people = Number(nums[1]);
-      const counts = nums.slice(2, 9).map(Number);
-
-      const sum = counts.reduce((a, b) => a + b, 0);
-      const rate = people ? ((sum / people) * 100).toFixed(1) : "0.0";
-
-      totalPeople += people;
-      totalFace += sum;
-      counts.forEach((v, i) => timeTotals[i] += v);
-
-      resultLines.push(
-        `${label}/${people}/${counts.join("/")}//${sum}(${rate}%)`
-      );
-      return;
+    if (!line.includes("/")) {
+      result.push(line);
+      continue;
     }
 
-    if (line.startsWith("📋")) inTable = false;
+    const parts = line.split("//");
+    const left = parts[0];
+    const cols = left.split("/");
 
-    bodyLines.push(line);
-  });
+    // 구역 또는 총무부
+    const label = cols[0];
 
-  const totalRate =
-    totalPeople ? ((totalFace / totalPeople) * 100).toFixed(1) : "0.0";
+    // 종합 / 빈 줄은 건너뜀
+    if (label === "종합") continue;
 
-  resultLines.push(
-    `종합/${totalPeople}/${timeTotals.join("/")}//${totalFace}(${totalRate}%)`
-  );
+    const registered = extractNumber(cols[1] || "0");
+    let sum = 0;
 
-  const finalText = [
-    bodyLines[0],
-    bodyLines[1],
-    "",
-    bodyLines.find(l => l.includes("▪️구역/재적")),
-    ...resultLines,
-    "",
-    ...bodyLines.slice(bodyLines.findIndex(l => l.startsWith("📋")))
-  ].join("\n");
+    for (let i = 2; i < cols.length; i++) {
+      const n = extractNumber(cols[i]);
+      sum += n;
+      totals[i] = (totals[i] || 0) + n;
+    }
 
-  document.getElementById("output").innerText = finalText;
+    const rate = registered > 0 ? ((sum / registered) * 100).toFixed(1) : "";
+    const rateText = rate ? `(${rate}%)` : "";
+
+    result.push(`${left}//${sum}${rateText}`);
+
+    if (registered > 0) {
+      totalRegistered += registered;
+      totalAttendance += sum;
+    }
+  }
+
+  // 종합 줄 생성
+  if (header.length) {
+    const colCount = header.split("/").length - 2;
+    let totalLine = ["종합", totalRegistered];
+
+    for (let i = 2; i < colCount + 2; i++) {
+      totalLine.push(totals[i] || 0);
+    }
+
+    const totalRate =
+      totalRegistered > 0
+        ? ((totalAttendance / totalRegistered) * 100).toFixed(1)
+        : "";
+
+    result.push(
+      `${totalLine.join("/")}//${totalAttendance}(${totalRate}%)`
+    );
+  }
+
+  document.getElementById("output").textContent = result.join("\n");
 }
 
 function copyResult() {
-  const text = document.getElementById("output").innerText;
-  if (!text) {
-    alert("복사할 결과가 없습니다.");
-    return;
-  }
+  const text = document.getElementById("output").textContent;
+  if (!text) return;
   navigator.clipboard.writeText(text).then(() => {
-    alert("✅ 전체 메시지가 복사되었습니다!");
+    alert("복사되었습니다 ✅");
   });
 }
 </script>
